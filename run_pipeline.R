@@ -119,3 +119,54 @@ new_predictions <- predictions |>
 
 if (nrow(new_predictions) > 0) {
   sheet_append(sheet_url, new_predictions, sheet = "predictions")}
+
+score_against <- "release"
+
+# every poll from the five pollsters
+actual_polls <- polls |>
+  rename(sponsor = sponsors) |>
+  semi_join(pollster_list, by = c("pollster", "sponsor")) |>
+  mutate(release_date = as.Date(createddate, format = "%m/%d/%Y"),
+         poll_net = approve - disapprove) |>
+  group_by(pollster, sponsor, startdate, enddate) |>
+  summarize(release_date = min(release_date),
+            poll_net = mean(poll_net),
+            .groups = "drop") |>
+  mutate(cutoff = if (score_against == "fieldwork") startdate else release_date)
+
+# predictions logged so far
+all_predictions <- read_sheet(sheet_url, sheet = "predictions") |>
+  mutate(prediction_date = as.Date(prediction_date))
+
+# skip polls that are scored already
+existing_results <- read_sheet(sheet_url, sheet = "results")
+if (nrow(existing_results) > 0) {
+  existing_results <- existing_results |>
+    mutate(startdate = as.Date(startdate), enddate = as.Date(enddate))
+  actual_polls <- anti_join(actual_polls, existing_results,
+                            by = c("pollster", "sponsor", "startdate", "enddate"))}
+
+# matching each new poll to its most recent prediction then score
+new_results <- actual_polls |>
+  inner_join(all_predictions, by = c("pollster", "sponsor"), relationship = "many-to-many") |>
+  filter(prediction_date < cutoff) |>
+  group_by(pollster, sponsor, startdate, enddate) |>
+  slice_max(prediction_date, n = 1, with_ties = FALSE) |>
+  ungroup() |>
+  mutate(error = round(poll_net - point_estimate, 2),
+         abs_error = abs(error),
+         in_50 = as.integer(poll_net >= lower_50 & poll_net <= upper_50),
+         in_90 = as.integer(poll_net >= lower_90 & poll_net <= upper_90),
+         scored_date = Sys.Date()) |>
+  select(pollster, sponsor, startdate, enddate, release_date, poll_net,
+         prediction_date, point_estimate, lower_50, upper_50, lower_90, upper_90,
+         error, abs_error, in_50, in_90, scored_date)
+
+# write to the results tab (headers on the first write, append after that)
+if (nrow(new_results) > 0) {
+  if (nrow(existing_results) == 0) {
+    sheet_write(new_results, ss = sheet_url, sheet = "results")
+  } else {
+    sheet_append(sheet_url, new_results, sheet = "results")}}
+
+print(new_results)
