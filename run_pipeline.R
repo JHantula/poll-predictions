@@ -1,7 +1,10 @@
 # Poll Prediction Pipeline
 # Joona Hantula, 10/5/26
 
-library(tidyverse)
+library(readr)
+library(dplyr)
+library(purrr)
+library(stringr)
 library(lubridate)
 library(googlesheets4)
 
