@@ -101,6 +101,13 @@ predictions <- pmap_dfr(pollster_list, function(pollster, sponsor, z) {
 
 print(predictions)
 
+key_path <- Sys.getenv("GS4_KEY")
+if (key_path != "") {
+  gs4_auth(path = key_path)
+} else {
+  gs4_auth()
+}
+
 sheet_url <- "http://docs.google.com/spreadsheets/d/1S9-qR7ovW30Dkj0YSnK28HdIP4eGZI0H6eFcvdrl5nM/edit?gid=1556615819#gid=1556615819"
 
 # skip pollsters already predicted today, so rerunning doesn't create duplicates
