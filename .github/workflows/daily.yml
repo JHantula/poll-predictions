@@ -16,8 +16,8 @@ jobs:
           use-public-rspm: true
 
       - name: Install packages
-        run: Rscript -e 'install.packages(c("readr","dplyr","purrr","stringr","lubridate","googlesheets4"))'
-
+        run: Rscript -e 'install.packages(c("readr","dplyr","purrr","stringr","lubridate","googlesheets4","curl"))'
+        
       - name: Write Google key
         run: printf '%s' "$GOOGLE_SERVICE_KEY" > key.json
         env:
