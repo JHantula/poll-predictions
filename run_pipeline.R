@@ -103,7 +103,10 @@ print(predictions)
 
 key_path <- Sys.getenv("GS4_KEY")
 if (key_path != "") {
-  gs4_auth(path = key_path)
+  token <- gargle::credentials_service_account(
+    path = key_path,
+    scopes = "https://www.googleapis.com/auth/spreadsheets")
+  gs4_auth(token = token)
 } else {
   gs4_auth()
 }
