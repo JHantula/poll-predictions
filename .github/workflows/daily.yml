@@ -2,8 +2,11 @@ name: Daily poll predictions
 
 on:
   schedule:
-    - cron: "0 14 * * *"   # 14:00 UTC = 10am Eastern
+    - cron: "17 15 * * *"   # 10:17am Eastern (standard time)
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   run:
@@ -14,27 +17,30 @@ jobs:
       - uses: r-lib/actions/setup-r@v2
         with:
           use-public-rspm: true
-          
+
       - name: Install system libraries
         run: sudo apt-get update && sudo apt-get install -y libcurl4-openssl-dev libssl-dev
 
       - name: Install packages
-        run: Rscript -e 'install.packages(c("readr","dplyr","purrr","stringr","lubridate","googlesheets4","curl"))'
+        run: Rscript -e 'install.packages(c("readr","dplyr","purrr","stringr","lubridate","googlesheets4","curl","plotly","htmlwidgets"))'
 
       - name: Check packages
-        run: Rscript -e 'library(curl); library(googlesheets4)'
-        
+        run: Rscript -e 'library(curl); library(googlesheets4); library(plotly)'
+
       - name: Write Google key
         run: printf '%s' "$GOOGLE_SERVICE_KEY" > key.json
         env:
           GOOGLE_SERVICE_KEY: ${{ secrets.GOOGLE_SERVICE_KEY }}
 
-      - name: Check key file
-        run: |
-          echo "key file size: $(wc -c < key.json) bytes"
-          python3 -c "import json; d = json.load(open('key.json')); print(d['type'], d['client_email'])"
-
       - name: Run pipeline
         run: Rscript run_pipeline.R
         env:
           GS4_KEY: key.json
+
+      - name: Commit charts
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add docs
+          git commit -m "Update charts $(date +%F)" || echo "No changes"
+          git push
